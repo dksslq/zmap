@@ -1,19 +1,17 @@
-name: build-zmap-musl
+name: build-zmap-zgrab2-musl
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-zmap:
     runs-on: ubuntu-latest
-
     container:
       image: alpine:latest
 
     steps:
       - name: Install build dependencies
         run: |
-          # 安装通用编译工具和头文件（动态库 .so 也会在这里）
           apk update
           apk add --no-cache \
             git \
@@ -37,42 +35,100 @@ jobs:
             tar \
             gzip
 
-          # 单独安装静态库包（部分库的 .a 文件需要从 -static 包获取）
+          # 部分库的静态 .a 文件需要单独安装
           apk add --no-cache \
             gmp-static \
             libunistring-static \
             zlib-static
 
-      - name: Checkout
+      - name: Checkout zmap
         uses: actions/checkout@v4
+        with:
+          repository: zmap/zmap
+          path: zmap
 
       - name: Configure ZMap
         run: |
+          cd zmap
           mkdir build
           cd build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_FLAGS="-static -O3" \
-            -DCMAKE_EXE_LINKER_FLAGS="-static" \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -Wl,--build-id=none" \
             -DENABLE_DEVELOPMENT=OFF
 
       - name: Build
         run: |
+          cd zmap
           cmake --build build -j$(nproc)
+
+      - name: Strip binary
+        run: |
+          strip --strip-all zmap/build/src/zmap
 
       - name: Check binary
         run: |
-          file build/src/zmap
-          ldd build/src/zmap || true
+          file zmap/build/src/zmap
+          ldd zmap/build/src/zmap || true
 
       - name: Package
         run: |
           mkdir dist
-          cp build/src/zmap dist/
+          cp zmap/build/src/zmap dist/
           tar czf zmap-musl-x86_64.tar.gz -C dist zmap
 
-      - name: Upload artifact
+      - name: Upload artifact (zmap)
         uses: actions/upload-artifact@v4
         with:
           name: zmap-musl-x86_64
           path: zmap-musl-x86_64.tar.gz
+
+  build-zgrab2:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:latest
+
+    steps:
+      - name: Install dependencies
+        run: |
+          apk update
+          apk add --no-cache \
+            git \
+            go \
+            file \
+            tar \
+            gzip
+
+      - name: Checkout zgrab2
+        uses: actions/checkout@v4
+        with:
+          repository: zmap/zgrab2
+          path: zgrab2
+
+      - name: Build zgrab2 (static, stripped, no build-id)
+        run: |
+          cd zgrab2
+          # CGO_ENABLED=0 确保纯静态链接
+          # -s -w 去除符号和调试信息, -buildid= 设置空 build-id
+          CGO_ENABLED=0 go build \
+            -o zgrab2 \
+            -ldflags="-s -w -buildid=" \
+            ./cmd/zgrab2
+
+      - name: Check binary
+        run: |
+          file zgrab2/zgrab2
+          ldd zgrab2/zgrab2 || true
+
+      - name: Package
+        run: |
+          mkdir dist
+          cp zgrab2/zgrab2 dist/
+          tar czf zgrab2-musl-x86_64.tar.gz -C dist zgrab2
+
+      - name: Upload artifact (zgrab2)
+        uses: actions/upload-artifact@v4
+        with:
+          name: zgrab2-musl-x86_64
+          path: zgrab2-musl-x86_64.tar.gz
