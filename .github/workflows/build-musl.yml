@@ -24,33 +24,27 @@ jobs:
             pkgconf \
             linux-headers \
             flex \
-            bison \
-            gengetopt \
             byacc \
-            # 下面的 -dev 包提供头文件和 .so（用于 CMake 检测）
+            gengetopt \
             gmp-dev \
             json-c-dev \
             libpcap-dev \
             libunistring-dev \
             judy-dev \
-            # 下面的 -static 包提供 .a 静态库，是真正链接时需要的
-            gmp-dev \
+            zlib-dev \
+            # 静态库（链接时真正需要）
+            gmp-static \
             json-c-static \
             libpcap-static \
             libunistring-static \
             judy-static \
             zlib-static \
-            # 其他工具
             file \
             tar \
             gzip
 
       - name: Checkout
         uses: actions/checkout@v4
-
-      # 这个步骤其实不需要单独存在，环境变量在 configure 步骤中通过
-      # -DCMAKE_C_FLAGS 和 -DCMAKE_EXE_LINKER_FLAGS 已经传入，可删除或保留。
-      # 为保持清晰，我把它去掉了。
 
       - name: Configure ZMap
         run: |
