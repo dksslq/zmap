@@ -32,8 +32,6 @@ jobs:
             libunistring-dev \
             judy-dev \
             zlib-dev \
-            # 静态库（链接时真正需要）
-            gmp-static \
             json-c-static \
             libpcap-static \
             libunistring-static \
