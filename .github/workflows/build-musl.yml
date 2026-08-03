@@ -1,0 +1,81 @@
+name: build-zmap-musl
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: alpine:latest
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          apk update
+          apk add --no-cache \
+            git \
+            cmake \
+            make \
+            gcc \
+            g++ \
+            musl-dev \
+            pkgconf \
+            linux-headers \
+            flex \
+            bison \
+            gengetopt \
+            gmp-dev \
+            json-c-dev \
+            libpcap-dev \
+            libunistring-dev \
+            judy-dev \
+            file \
+            tar \
+            gzip
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build static dependencies
+        run: |
+          echo "Building with musl"
+
+          export CFLAGS="-static -O3"
+          export CXXFLAGS="-static -O3"
+          export LDFLAGS="-static"
+
+      - name: Configure ZMap
+        run: |
+          mkdir build
+          cd build
+
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="-static -O3" \
+            -DCMAKE_EXE_LINKER_FLAGS="-static" \
+            -DENABLE_DEVELOPMENT=OFF
+
+      - name: Build
+        run: |
+          cmake --build build -j$(nproc)
+
+      - name: Check binary
+        run: |
+          file build/src/zmap
+          ldd build/src/zmap || true
+
+      - name: Package
+        run: |
+          mkdir dist
+
+          cp build/src/zmap dist/
+
+          tar czf zmap-musl-x86_64.tar.gz -C dist zmap
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zmap-musl-x86_64
+          path: zmap-musl-x86_64.tar.gz
