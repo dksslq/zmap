@@ -13,6 +13,7 @@ jobs:
     steps:
       - name: Install build dependencies
         run: |
+          # 安装通用编译工具和头文件（动态库 .so 也会在这里）
           apk update
           apk add --no-cache \
             git \
@@ -32,10 +33,15 @@ jobs:
             libunistring-dev \
             judy-dev \
             zlib-dev \
-            zlib-static \
             file \
             tar \
             gzip
+
+          # 单独安装静态库包（部分库的 .a 文件需要从 -static 包获取）
+          apk add --no-cache \
+            gmp-static \
+            libunistring-static \
+            zlib-static
 
       - name: Checkout
         uses: actions/checkout@v4
