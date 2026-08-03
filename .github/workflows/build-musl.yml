@@ -32,10 +32,6 @@ jobs:
             libunistring-dev \
             judy-dev \
             zlib-dev \
-            json-c-static \
-            libpcap-static \
-            libunistring-static \
-            judy-static \
             zlib-static \
             file \
             tar \
